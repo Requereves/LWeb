@@ -1,10 +1,3 @@
-# Mengabaikan environment lokal
 venv/
-env/
-
-# Mengabaikan cache internal Python
 __pycache__/
 *.pyc
-
-# Mengabaikan konfigurasi rahasia (kalau nanti ada)
-.env
