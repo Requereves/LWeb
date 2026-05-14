@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bagiWatt — Monitoring Listrik Rumah</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#4f46e5;--primary-h:#4338ca;--primary-lt:#eef2ff;
+  --green:#10b981;--amber:#f59e0b;--red:#ef4444;
+  --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
+  --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;--s900:#0f172a;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--s50);color:var(--s800);line-height:1.55;font-size:14px}
+button{cursor:pointer;font-family:inherit}input,select{font-family:inherit}
+/* Layout */
+.app-shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:256px;background:#fff;border-right:1px solid var(--s100);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:18px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--s100)}
+.logo-icon{background:var(--primary);padding:8px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.sidebar-nav{flex:1;padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;color:var(--s500);border:none;background:none;width:100%;text-align:left;transition:all .15s}
+.nav-item:hover{background:var(--s50);color:var(--s800)}
+.nav-item.active{background:var(--primary-lt);color:var(--primary)}
+.nav-item svg{flex-shrink:0}
+.sidebar-footer{padding:12px;border-top:1px solid var(--s100)}
+.user-info{display:flex;align-items:center;gap:10px;padding:8px;margin-bottom:8px}
+.user-avatar{width:34px;height:34px;background:var(--primary-lt);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--primary);flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;color:var(--s800)}
+.user-email{font-size:11px;color:var(--s400)}
+.app-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.mob-header{display:none;background:#fff;border-bottom:1px solid var(--s100);padding:12px 16px;align-items:center;justify-content:space-between;flex-shrink:0}
+.mob-logo{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--s900)}
+.app-main{flex:1;overflow-y:auto;padding:24px 28px;background:linear-gradient(135deg,var(--s50) 0%,#eef2ff22 100%)}
+@media(max-width:768px){.sidebar{display:none}.mob-header{display:flex}.app-main{padding:16px}}
+/* Cards */
+.card{background:#fff;border:1px solid var(--s200);border-radius:14px;overflow:hidden}
+.card-header{padding:16px 20px 10px}
+.card-title{font-weight:600;color:var(--s800);font-size:15px;display:flex;align-items:center;gap:8px}
+.card-desc{color:var(--s500);font-size:12px;margin-top:3px}
+.card-content{padding:16px 20px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;transition:all .15s;line-height:1}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-h)}
+.btn-outline{background:transparent;color:var(--s700);border:1px solid var(--s200)}.btn-outline:hover{background:var(--s50)}
+.btn-ghost{background:transparent;color:var(--s600)}.btn-ghost:hover{background:var(--s100)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-red-ghost{background:transparent;color:var(--red);border:1px solid #fecaca}.btn-red-ghost:hover{background:#fef2f2}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}.btn-lg{padding:12px 28px;font-size:15px;border-radius:10px}.btn-block{width:100%}.btn-icon{padding:6px;border-radius:6px}
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--s700);margin-bottom:5px}
+.form-label .opt{font-weight:400;color:var(--s400);margin-left:4px}
+.form-input,.form-select{width:100%;padding:8px 12px;border:1px solid var(--s200);border-radius:8px;font-size:14px;color:var(--s800);background:#fff;outline:none;transition:border-color .15s}
+.form-input:focus,.form-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.form-input:disabled{background:var(--s50);color:var(--s500)}
+.g2cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid transparent}
+.badge-active{background:#dcfce7;color:#15803d;border-color:#bbf7d0}
+.badge-inactive{background:var(--s100);color:var(--s500);border-color:var(--s200)}
+.badge-pending{background:#fef3c7;color:#b45309;border-color:#fde68a}
+.badge-indigo{background:var(--primary-lt);color:var(--primary);border-color:#c7d2fe}
+.badge-red{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+.badge-orange{background:#ffedd5;color:#9a3412;border-color:#fed7aa}
+.badge-blue{background:#dbeafe;color:#1e40af;border-color:#bfdbfe}
+.badge-purple{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}
+.badge-yellow{background:#fef9c3;color:#854d0e;border-color:#fde68a}
+.badge-cyan{background:#cffafe;color:#155e75;border-color:#a5f3fc}
+.badge-gray{background:var(--s100);color:var(--s700);border-color:var(--s200)}
+.badge-emerald{background:#d1fae5;color:#065f46;border-color:#a7f3d0}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{padding:10px 14px;text-align:left;color:var(--s500);font-weight:500;background:var(--s50);font-size:12px}
+.tbl th:first-child{border-radius:8px 0 0 8px}.tbl th:last-child{border-radius:0 8px 8px 0}
+.tbl td{padding:12px 14px;border-top:1px solid var(--s100);color:var(--s700)}
+.tbl tr:hover td{background:#fafafa}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:#fff;border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-header{padding:18px 20px 12px;border-bottom:1px solid var(--s100);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-weight:700;font-size:15px}
+.modal-body{padding:20px}
+/* Mobile drawer */
+.mob-drawer-wrap{position:fixed;inset:0;z-index:100;display:flex}
+.mob-overlay{position:absolute;inset:0;background:rgba(15,23,42,.35);backdrop-filter:blur(4px)}
+.mob-panel{position:relative;width:280px;background:#fff;display:flex;flex-direction:column;height:100%}
+/* Utils */
+.section-header{margin-bottom:20px}
+.section-title{font-size:20px;font-weight:700;color:var(--s900)}
+.section-sub{color:var(--s500);font-size:13px;margin-top:3px}
+.flex{display:flex}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}
+.items-center{align-items:center}.items-start{align-items:flex-start}
+.justify-between{justify-content:space-between}.justify-center{justify-content:center}
+.flex-1{flex:1}.shrink-0{flex-shrink:0}
+.gap-1{gap:4px}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}
+.grid{display:grid}
+.g2{grid-template-columns:repeat(2,1fr);gap:16px}
+.g3{grid-template-columns:repeat(3,1fr);gap:16px}
+.g4{grid-template-columns:repeat(4,1fr);gap:16px}
+.gcol12{grid-template-columns:1fr 2fr;gap:24px}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.gcol12{grid-template-columns:1fr}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}.g2cols{grid-template-columns:1fr}}
+.space-y>*+*{margin-top:12px}.space-yl>*+*{margin-top:20px}
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}
+.p-3{padding:12px}.p-4{padding:16px}
+.rounded{border-radius:8px}.rounded-xl{border-radius:16px}.rounded-full{border-radius:99px}
+.text-xs{font-size:11px}.text-sm{font-size:13px}.text-2xl{font-size:22px}
+.font-bold{font-weight:700}.font-semibold{font-weight:600}
+.text-muted{color:var(--s500)}.text-primary{color:var(--primary)}.text-white{color:#fff}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.border-t{border-top:1px solid var(--s100)}
+.hidden{display:none!important}
+/* Charts */
+.bar-chart-wrap{display:flex;flex-direction:column;padding:0 4px}
+.bar-chart-bars{display:flex;align-items:flex-end;gap:6px;height:160px}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:3px}
+.bar-col-val{font-size:10px;color:var(--s400)}
+.bar-fill{width:100%;border-radius:5px 5px 0 0}
+.bar-chart-labels{display:flex;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--s100)}
+.bar-lbl{flex:1;text-align:center;font-size:11px;color:var(--s500)}
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+.donut-circle{position:relative;display:flex;align-items:center;justify-content:center}
+.donut-inner{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut-legend{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center}
+.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:2px}
+/* Device items */
+.device-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--s100);border-radius:12px;transition:all .15s;gap:8px}
+.device-item:hover{background:var(--s50)}.device-item.inactive{opacity:.65;background:var(--s50)}
+.device-actions{display:flex;gap:4px;flex-shrink:0}
+.btn-tog-on{background:transparent;color:#15803d;border:none;padding:5px;border-radius:6px;cursor:pointer}
+.btn-tog-on:hover{background:#dcfce7}
+.btn-tog-off{background:transparent;color:var(--s400);border:none;padding:5px;border-radius:6px;cursor:pointer}
+.btn-tog-off:hover{background:var(--s100)}
+.btn-del{background:transparent;color:#f87171;border:none;padding:5px;border-radius:6px;cursor:pointer}
+.btn-del:hover{background:#fef2f2;color:var(--red)}
+/* Info boxes */
+.info-box{display:flex;gap:8px;padding:10px 12px;border-radius:8px;font-size:12px;align-items:flex-start}
+.info-blue{background:#eff6ff;border:1px solid #dbeafe;color:#1e40af}
+.info-indigo{background:var(--primary-lt);border:1px solid #c7d2fe;color:#3730a3}
+/* Score */
+.score-card{background:linear-gradient(160deg,#4f46e5 0%,#3730a3 100%);color:#fff;border-radius:14px;padding:24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.score-num{font-size:52px;font-weight:800;line-height:1}
+.prog-bar{width:100%;height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:#4ade80;border-radius:4px}
+/* Top card */
+.top-card{padding:16px;border:1px solid var(--s100);border-radius:12px;background:#fff;display:flex;flex-direction:column;gap:10px}
+.rank-badge{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.stat-row{display:flex;justify-content:space-between;font-size:13px;padding-top:8px;border-top:1px solid var(--s100)}
+/* Landing */
+.landing{background:#fff;min-height:100vh}
+.landing-nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--s100);padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.lmax{max-width:1100px;margin:0 auto;padding:0 24px}
+.hero{padding:64px 0 48px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+@media(max-width:768px){.hero{grid-template-columns:1fr;gap:28px}}
+.hero-title{font-size:44px;font-weight:800;line-height:1.1;color:var(--s900);margin-bottom:16px}
+@media(max-width:600px){.hero-title{font-size:30px}}
+.hero-sub{color:var(--s500);font-size:15px;line-height:1.6;max-width:420px;margin-bottom:24px}
+.stat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.stat-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--s50);border:1px solid var(--s100);border-radius:99px;font-size:12px;color:var(--s600)}
+.hero-img-box{aspect-ratio:4/3;background:var(--primary-lt);border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(79,70,229,.15);position:relative}
+.hero-img-box img{width:100%;height:100%;object-fit:cover}
+.float-badge{position:absolute;bottom:16px;left:16px;background:rgba(255,255,255,.97);padding:12px 14px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:flex;align-items:center;gap:10px}
+.float-icon{background:#dcfce7;padding:8px;border-radius:50%;display:flex}
+.feat-grid{margin-top:72px}
+.feat-card{background:#fff;padding:24px;border-radius:24px;border:1px solid var(--s100);box-shadow:0 2px 8px rgba(0,0,0,.04);transition:all .2s}
+.feat-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08);transform:translateY(-2px)}
+.feat-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.cta-banner{margin:64px 0 24px;background:linear-gradient(135deg,var(--primary) 0%,#2563eb 100%);border-radius:24px;padding:48px 32px;text-align:center;color:#fff;box-shadow:0 12px 40px rgba(79,70,229,.3)}
+.land-footer{border-top:1px solid var(--s100);padding:24px;text-align:center;font-size:12px;color:var(--s400)}
+/* Login */
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--primary-lt) 0%,#fff 50%,#dbeafe 100%);padding:16px}
+.login-back-btn{position:fixed;top:20px;left:20px;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--s500);cursor:pointer;border:none;background:none}
+.login-back-btn:hover{color:var(--primary)}
+.login-card{background:#fff;border-radius:16px;border:1px solid var(--s200);box-shadow:0 20px 60px rgba(0,0,0,.12);width:100%;max-width:400px}
+.login-hdr{padding:24px 24px 16px}
+.login-bdy{padding:0 24px 24px}
+.pw-wrap{position:relative}
+.pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--s400);cursor:pointer;padding:2px;display:flex}
+.pw-toggle:hover{color:var(--s600)}
+.err-box{padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#991b1b;font-size:12px;margin-bottom:12px}
+.demo-note{margin-top:16px;padding:10px 12px;background:var(--s50);border:1px solid var(--s100);border-radius:10px;text-align:center;font-size:11px;color:var(--s500)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="modal-wrap" class="hidden">
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="btn btn-ghost btn-icon" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+</div>
+<div id="mob-drawer-wrap" class="hidden">
+  <div class="mob-drawer-wrap">
+    <div class="mob-overlay" id="mob-overlay"></div>
+    <div class="mob-panel">
+      <div class="sidebar-logo" style="padding:16px 18px">
+        <div class="logo-icon" style="padding:7px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:15px;color:var(--s900)">bagiWatt</div>
+          <div style="font-size:11px;color:var(--s400)">Monitoring Listrik</div>
+        </div>
+      </div>
+      <nav id="mob-nav" style="flex:1;padding:10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto"></nav>
+      <div style="padding:12px;border-top:1px solid var(--s100)">
+        <div id="mob-user" class="user-info"></div>
+        <button class="btn btn-red-ghost btn-block btn-sm" id="mob-logout-btn" style="justify-content:flex-start;gap:8px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Keluar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// ICONS
+// ═══════════════════════════════════
+function ico(name, size) {
+  size = size || 20;
+  var a = 'width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  var p = {
+    zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+    dashboard:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+    device:'<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+    chart:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    bulb:'<line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>',
+    wallet:'<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+    user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    menu:'<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
+    x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+    trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>',
+    power:'<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
+    poweroff:'<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12" stroke-dasharray="4 2"/>',
+    leaf:'<path d="M2 22c1.25-1.25 2.17-2.98 2-6 .83.85 2 2 4 2s2-1 4-1 2.33.65 4 1.5c1.37.7 2.67 1.5 4 1.5-1.25 1.25-2.17 2.98-2 6-.83-.85-2-2-4-2s-2 1-4 1-2.33-.65-4-1.5C4.63 23.3 3.33 22.5 2 22z"/>',
+    activity:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    trending:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+    trending_dn:'<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
+    thermo:'<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>',
+    clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    warn:'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    medal:'<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>',
+    sparkles:'<path d="M12 3L9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/>',
+    shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    mail:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+    pencil:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+    check:'<polyline points="20 6 9 17 4 12"/>',
+    chevron_r:'<polyline points="9 18 15 12 9 6"/>',
+    arrow_l:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    eye_off:'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+    plug:'<path d="M18 3h-1V1h-2v2H9V1H7v2H6a2 2 0 0 0-2 2v4c0 2.21 1.79 4 4 4v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4c2.21 0 4-1.79 4-4V5a2 2 0 0 0-2-2z"/>',
+    calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    info:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+    help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    snowflake:'<line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5l-5 5-5-5"/><path d="M17 19l-5-5-5 5"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M5 7l5 5-5 5"/><path d="M19 7l-5 5 5 5"/>',
+    tv:'<rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/>',
+    laptop:'<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0l1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>',
+    utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><line x1="7" y1="2" x2="7" y2="22"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>',
+    droplet:'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
+    bar_chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    shield_ck:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+  };
+  return '<svg '+a+'>'+(p[name]||'')+'</svg>';
+}
+
+// ═══════════════════════════════════
+// DEMO DATA
+// ═══════════════════════════════════
+var DEMO_DEVICES = [
+  {id:'demo-d1',name:'AC Split 1PK',brand:'Samsung',model:'AR09A5JWFWK',category:'Pendingin',wattage:890,hoursPerDay:8,year:2022,status:'active'},
+  {id:'demo-d2',name:'Kulkas 2 Pintu',brand:'Sharp',model:'SJ-X195',category:'Pendingin',wattage:100,hoursPerDay:24,year:2020,status:'active'},
+  {id:'demo-d3',name:'TV LED 43"',brand:'LG',model:'43LM5700',category:'Elektronik',wattage:75,hoursPerDay:5,year:2022,status:'active'},
+  {id:'demo-d4',name:'Laptop',brand:'Asus',model:'VivoBook 14',category:'Elektronik',wattage:65,hoursPerDay:7,year:2023,status:'active'},
+  {id:'demo-d5',name:'Lampu LED (x6)',brand:'Philips',model:'SceneSwitch 10W',category:'Penerangan',wattage:60,hoursPerDay:10,year:2021,status:'active'},
+  {id:'demo-d6',name:'Rice Cooker',brand:'Miyako',model:'MCM-508',category:'Dapur',wattage:400,hoursPerDay:1.5,year:2019,status:'active'},
+  {id:'demo-d7',name:'Water Heater',brand:'Ariston',model:'Aures Smart 3.5',category:'Kamar Mandi',wattage:3500,hoursPerDay:0.5,year:2021,status:'inactive'},
+];
+var DEMO_LOGS = [
+  {id:'dl-01',deviceId:'demo-d1',date:'2026-05-09',durationHours:8,totalKwh:7.12,carbonEmission:6.05},
+  {id:'dl-02',deviceId:'demo-d2',date:'2026-05-09',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-03',deviceId:'demo-d3',date:'2026-05-09',durationHours:5,totalKwh:0.38,carbonEmission:0.32},
+  {id:'dl-04',deviceId:'demo-d4',date:'2026-05-09',durationHours:7,totalKwh:0.46,carbonEmission:0.39},
+  {id:'dl-05',deviceId:'demo-d1',date:'2026-05-08',durationHours:8,totalKwh:7.12,carbonEmission:6.05},
+  {id:'dl-06',deviceId:'demo-d2',date:'2026-05-08',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-07',deviceId:'demo-d5',date:'2026-05-08',durationHours:10,totalKwh:0.60,carbonEmission:0.51},
+  {id:'dl-08',deviceId:'demo-d1',date:'2026-05-07',durationHours:8,totalKwh:7.12,carbonEmission:6.05},
+  {id:'dl-09',deviceId:'demo-d2',date:'2026-05-07',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-10',deviceId:'demo-d6',date:'2026-05-07',durationHours:1.5,totalKwh:0.60,carbonEmission:0.51},
+  {id:'dl-11',deviceId:'demo-d1',date:'2026-05-06',durationHours:7.5,totalKwh:6.68,carbonEmission:5.68},
+  {id:'dl-12',deviceId:'demo-d2',date:'2026-05-06',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-13',deviceId:'demo-d4',date:'2026-05-06',durationHours:7,totalKwh:0.46,carbonEmission:0.39},
+  {id:'dl-14',deviceId:'demo-d1',date:'2026-05-05',durationHours:8,totalKwh:7.12,carbonEmission:6.05},
+  {id:'dl-15',deviceId:'demo-d2',date:'2026-05-05',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-16',deviceId:'demo-d3',date:'2026-05-05',durationHours:5,totalKwh:0.38,carbonEmission:0.32},
+  {id:'dl-17',deviceId:'demo-d1',date:'2026-05-04',durationHours:8,totalKwh:7.12,carbonEmission:6.05},
+  {id:'dl-18',deviceId:'demo-d2',date:'2026-05-04',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-19',deviceId:'demo-d1',date:'2026-05-03',durationHours:7,totalKwh:6.23,carbonEmission:5.30},
+  {id:'dl-20',deviceId:'demo-d2',date:'2026-05-03',durationHours:24,totalKwh:2.40,carbonEmission:2.04},
+  {id:'dl-21',deviceId:'demo-d6',date:'2026-05-03',durationHours:1.5,totalKwh:0.60,carbonEmission:0.51},
+];
+var DEMO_TOKENS = [
+  {id:'dt-01',date:'2026-04-15',amountRupiah:200000,kwhReceived:136.6},
+  {id:'dt-02',date:'2026-03-10',amountRupiah:150000,kwhReceived:101.7},
+  {id:'dt-03',date:'2026-02-20',amountRupiah:100000,kwhReceived:67.2},
+];
+var COST_PER_KWH = 1444.70;
+var PRESETS = {
+  'AC':{w:900,cat:'Pendingin'},'Kulkas':{w:100,cat:'Pendingin'},'Kipas Angin':{w:55,cat:'Pendingin'},
+  'TV LED 32"':{w:60,cat:'Elektronik'},'TV LED 50"':{w:100,cat:'Elektronik'},
+  'Komputer Desktop':{w:300,cat:'Elektronik'},'Laptop':{w:65,cat:'Elektronik'},
+  'Mesin Cuci':{w:500,cat:'Elektronik'},'Setrika':{w:350,cat:'Elektronik'},
+  'Lampu LED':{w:10,cat:'Penerangan'},'Lampu Neon':{w:40,cat:'Penerangan'},
+  'Rice Cooker':{w:400,cat:'Dapur'},'Microwave':{w:1200,cat:'Dapur'},'Dispenser':{w:350,cat:'Dapur'},
+  'Water Heater':{w:1500,cat:'Kamar Mandi'},'Hair Dryer':{w:1200,cat:'Kamar Mandi'},
+};
+var CAT_BADGE = {'Pendingin':'badge-blue','Elektronik':'badge-purple','Penerangan':'badge-yellow','Dapur':'badge-orange','Kamar Mandi':'badge-cyan','Lainnya':'badge-gray'};
+var CAT_ICO   = {'Pendingin':'snowflake','Elektronik':'tv','Penerangan':'bulb','Dapur':'utensils','Kamar Mandi':'droplet','Lainnya':'laptop'};
+var COLORS    = ['#4f46e5','#7c3aed','#10b981','#f59e0b','#ec4899','#06b6d4'];
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+var S = { page:'landing', section:'dashboard', user:null, devices:[], logs:[], tokens:[] };
+var showPwd = false;
+var loginMode = true; // true = login, false = register
+
+function saveState() {
+  if(S.user) localStorage.setItem('bw_user', JSON.stringify(S.user));
+  localStorage.setItem('bw_devices', JSON.stringify(S.devices));
+  localStorage.setItem('bw_logs',    JSON.stringify(S.logs));
+  localStorage.setItem('bw_tokens',  JSON.stringify(S.tokens));
+}
+function loadState() {
+  var u = localStorage.getItem('bw_user');
+  S.user = u ? JSON.parse(u) : null;
+  var d = localStorage.getItem('bw_devices');
+  S.devices = d ? JSON.parse(d) : DEMO_DEVICES.map(function(x){ return Object.assign({},x); });
+  var l = localStorage.getItem('bw_logs');
+  S.logs = l ? JSON.parse(l) : DEMO_LOGS.map(function(x){ return Object.assign({},x); });
+  var t = localStorage.getItem('bw_tokens');
+  S.tokens = t ? JSON.parse(t) : DEMO_TOKENS.map(function(x){ return Object.assign({},x); });
+  S.page = S.user ? 'app' : 'landing';
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtRp(n) { return 'Rp '+Math.round(n).toLocaleString('id-ID'); }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function shortDate(d) { return new Date(d+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'}); }
+function weekdayShort(d) { return new Date(d+'T00:00:00').toLocaleDateString('id-ID',{weekday:'short'}); }
+function q(id) { return document.getElementById(id); }
+function qv(id) { var el=q(id); return el?el.value:''; }
+
+// ═══════════════════════════════════
+// MODAL
+// ═══════════════════════════════════
+function showModal(title, html) {
+  q('modal-title').textContent = title;
+  q('modal-body').innerHTML = html;
+  q('modal-wrap').classList.remove('hidden');
+}
+function closeModal() { q('modal-wrap').classList.add('hidden'); }
+q('modal-close-btn').addEventListener('click', closeModal);
+
+// ═══════════════════════════════════
+// MOBILE DRAWER
+// ═══════════════════════════════════
+function openMobMenu() {
+  var mn = q('mob-nav');
+  mn.innerHTML = NAV.map(function(n) {
+    return '<button class="nav-item'+(S.section===n.id?' active':'')+'" onclick="goSection(\''+n.id+'\')">'
+      +ico(n.icon,18)+'<span>'+n.label+'</span></button>';
+  }).join('');
+  var mu = q('mob-user');
+  if(S.user) mu.innerHTML = '<div class="user-avatar">'+ico('user',16)+'</div>'
+    +'<div><div class="user-name truncate">'+esc(S.user.username)+'</div>'
+    +'<div class="user-email truncate">'+esc(S.user.email)+'</div></div>';
+  q('mob-drawer-wrap').classList.remove('hidden');
+}
+function closeMobMenu() { q('mob-drawer-wrap').classList.add('hidden'); }
+q('mob-overlay').addEventListener('click', closeMobMenu);
+q('mob-logout-btn').addEventListener('click', handleLogout);
+
+// ═══════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════
+var NAV = [
+  {id:'dashboard',label:'Dashboard',icon:'dashboard'},
+  {id:'devices',label:'Perangkat',icon:'device'},
+  {id:'logs',label:'Log Penggunaan',icon:'chart'},
+  {id:'recommendations',label:'Rekomendasi',icon:'bulb'},
+  {id:'token',label:'Token Listrik',icon:'wallet'},
+  {id:'profile',label:'Profil',icon:'user'},
+];
+
+function goTo(page, section) {
+  S.page = page;
+  if(section) S.section = section;
+  render();
+}
+function goSection(sec) {
+  S.section = sec;
+  closeMobMenu();
+  renderSidebar();
+  renderMobHeader();
+  renderContent();
+}
+
+// ═══════════════════════════════════
+// MAIN RENDER
+// ═══════════════════════════════════
+function render() {
+  var root = q('root');
+  if(S.page === 'landing') { root.innerHTML = htmlLanding(); bindLandingEvents(); return; }
+  if(S.page === 'login')   { root.innerHTML = htmlLogin();   bindLoginEvents();   return; }
+  root.innerHTML = [
+    '<div class="app-shell">',
+    '  <aside class="sidebar" id="sidebar"></aside>',
+    '  <div class="app-body">',
+    '    <header class="mob-header" id="mob-header"></header>',
+    '    <main class="app-main" id="app-content"></main>',
+    '  </div>',
+    '</div>'
+  ].join('');
+  renderSidebar();
+  renderMobHeader();
+  renderContent();
+}
+
+function renderSidebar() {
+  var sb = q('sidebar'); if(!sb) return;
+  sb.innerHTML = '<div class="sidebar-logo">'
+    +'<div class="logo-icon">'+ico('zap',18)+'</div>'
+    +'<div><div style="font-weight:700;font-size:15px;color:var(--s900)">bagiWatt</div>'
+    +'<div style="font-size:11px;color:var(--s400)">Monitoring Listrik</div></div></div>'
+    +'<nav class="sidebar-nav">'
+    +NAV.map(function(n){
+      return '<button class="nav-item'+(S.section===n.id?' active':'')+'" onclick="goSection(\''+n.id+'\')">'
+        +ico(n.icon,18)+'<span>'+n.label+'</span></button>';
+    }).join('')
+    +'</nav>'
+    +'<div class="sidebar-footer">'
+    +'<div class="user-info"><div class="user-avatar">'+ico('user',16)+'</div>'
+    +'<div style="min-width:0"><div class="user-name truncate">'+esc(S.user?S.user.username:'')+'</div>'
+    +'<div class="user-email truncate">'+esc(S.user?S.user.email:'')+'</div></div></div>'
+    +'<button class="btn btn-red-ghost btn-block btn-sm" onclick="handleLogout()" style="justify-content:flex-start;gap:8px">'
+    +ico('logout',15)+' Keluar</button></div>';
+}
+
+function renderMobHeader() {
+  var mh = q('mob-header'); if(!mh) return;
+  var current = NAV.filter(function(n){return n.id===S.section;})[0];
+  mh.innerHTML = '<div class="mob-logo">'
+    +'<div class="logo-icon" style="padding:6px">'+ico('zap',16)+'</div>'
+    +' bagiWatt'
+    +(current?' <span style="color:var(--s300);margin:0 4px">/</span><span style="font-size:13px;font-weight:500;color:var(--s600)">'+current.label+'</span>':'')
+    +'</div>'
+    +'<button class="btn btn-ghost btn-icon" onclick="openMobMenu()">'+ico('menu',20)+'</button>';
+}
+
+function renderContent() {
+  var c = q('app-content'); if(!c) return;
+  var fns = {
+    dashboard: htmlDashboard, devices: htmlDevices, logs: htmlLogs,
+    recommendations: htmlRecommendations, token: htmlToken, profile: htmlProfile
+  };
+  c.innerHTML = (fns[S.section] || htmlDashboard)();
+  bindForms();
+  if(S.section==='devices') setTimeout(renderDeviceList, 0);
+}
+
+// ═══════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════
+function htmlDashboard() {
+  var cm = todayStr().slice(0,7);
+  var ml = S.logs.filter(function(l){return l.date.startsWith(cm);});
+  var mkwh   = ml.reduce(function(s,l){return s+l.totalKwh;},0);
+  var mcarb  = ml.reduce(function(s,l){return s+l.carbonEmission;},0);
+  var mcost  = mkwh * COST_PER_KWH;
+  var totDev = S.devices.length;
+  var actDev = S.devices.filter(function(d){return d.status==='active';}).length;
+
+  // 7-day bars
+  var today = new Date();
+  var days7 = []; for(var i=0;i<7;i++){var d=new Date(today);d.setDate(d.getDate()-(6-i));days7.push(d.toISOString().slice(0,10));}
+  var wdata = days7.map(function(date){
+    var kwh = S.logs.filter(function(l){return l.date===date;}).reduce(function(s,l){return s+l.totalKwh;},0);
+    return {date:date, label:weekdayShort(date), kwh:parseFloat(kwh.toFixed(2))};
+  });
+  var maxK = Math.max.apply(null, wdata.map(function(d){return d.kwh;}).concat([1]));
+
+  // Donut
+  var catCount = {};
+  S.devices.filter(function(d){return d.status==='active';}).forEach(function(d){catCount[d.category]=(catCount[d.category]||0)+1;});
+  var pieData = Object.keys(catCount).map(function(k){return {n:k,v:catCount[k]};});
+  var totalPie = pieData.reduce(function(s,p){return s+p.v;},0);
+  var angle=0, gradient='';
+  if(totalPie>0){
+    gradient = pieData.map(function(p,i){
+      var deg=(p.v/totalPie)*360;
+      var seg=COLORS[i%COLORS.length]+' '+angle+'deg '+(angle+deg)+'deg';
+      angle+=deg; return seg;
+    }).join(',');
+  }
+
+  var top5 = S.devices.filter(function(d){return d.status==='active';})
+    .sort(function(a,b){return b.wattage-a.wattage;}).slice(0,5);
+
+  return '<div class="space-yl">'
+    +'<div class="section-header"><h2 class="section-title">Dashboard</h2><p class="section-sub">Ringkasan konsumsi energi Anda bulan ini.</p></div>'
+    +'<div class="grid g4">'
+    +sumCard(ico('zap',16),'#fff7ed','#ea580c','Estimasi Biaya / Bulan',fmtRp(mcost),'Berdasarkan '+ml.length+' log bulan ini')
+    +sumCard(ico('activity',16),'#eef2ff','#4f46e5','Pemakaian / Bulan',mkwh.toFixed(1)+' kWh','Total kWh dari log tercatat')
+    +sumCard(ico('leaf',16),'#f0fdf4','#16a34a','Jejak Karbon',mcarb.toFixed(1)+' kg CO₂','Emisi karbon bulan ini')
+    +sumCard(ico('device',16),'#eff6ff','#2563eb','Perangkat',actDev+' <span style="font-size:14px;font-weight:400;color:var(--s500)">aktif</span>','Dari total '+totDev+' perangkat')
+    +'</div>'
+    +'<div class="grid g2">'
+    // Bar chart
+    +'<div class="card"><div class="card-header"><div class="flex justify-between items-center">'
+    +'<div><div class="card-title">Tren Pemakaian 7 Hari</div><div class="card-desc">Total kWh per hari dari log tercatat</div></div>'
+    +'<span style="color:#a5b4fc">'+ico('trending',20)+'</span></div></div>'
+    +'<div class="card-content"><div class="bar-chart-wrap"><div class="bar-chart-bars">'
+    +wdata.map(function(d){
+      return '<div class="bar-col">'
+        +'<div class="bar-col-val">'+(d.kwh>0?d.kwh.toFixed(1):'')+'</div>'
+        +'<div class="bar-fill" style="height:'+Math.max((d.kwh/maxK)*155,2)+'px;background:'+(d.kwh>0?'#4f46e5':'#e2e8f0')+'" title="'+d.label+': '+d.kwh+' kWh"></div>'
+        +'</div>';
+    }).join('')
+    +'</div><div class="bar-chart-labels">'
+    +wdata.map(function(d){return '<div class="bar-lbl">'+d.label+'</div>';}).join('')
+    +'</div></div></div></div>'
+    // Donut
+    +'<div class="card"><div class="card-header"><div class="card-title">Distribusi Kategori Perangkat</div><div class="card-desc">Jumlah perangkat aktif per kategori</div></div>'
+    +'<div class="card-content flex justify-center">'
+    +(pieData.length>0
+      ?'<div class="donut-wrap">'
+        +'<div class="donut-circle" style="width:160px;height:160px">'
+        +'<div style="width:160px;height:160px;border-radius:50%;background:conic-gradient('+gradient+')"></div>'
+        +'<div class="donut-inner"><span style="font-size:22px;font-weight:700;color:var(--s800)">'+totalPie+'</span><span style="font-size:11px;color:var(--s500)">perangkat</span></div>'
+        +'</div>'
+        +'<div class="donut-legend">'
+        +pieData.map(function(p,i){
+          return '<div class="flex items-center gap-1"><span class="legend-dot" style="background:'+COLORS[i%COLORS.length]+'"></span><span style="font-size:12px;color:var(--s600)">'+esc(p.n)+' ('+p.v+')</span></div>';
+        }).join('')
+        +'</div></div>'
+      :'<div style="padding:40px 0;color:var(--s400);font-size:13px;text-align:center">Belum ada perangkat aktif</div>'
+    )+'</div></div>'
+    +'</div>'
+    +(top5.length>0
+      ?'<div class="card" style="border-color:#e0e7ff;background:#eef2ff33">'
+        +'<div class="card-header"><div class="card-title" style="color:#3730a3">'+ico('zap',16)+' Perangkat Aktif Teratas (berdasarkan daya)</div></div>'
+        +'<div class="card-content"><div class="flex flex-wrap gap-2">'
+        +top5.map(function(d,i){
+          var cls = i===0?'badge-red':i===1?'badge-orange':'badge-indigo';
+          return '<span class="badge '+cls+'" style="padding:4px 10px;font-size:12px">'+esc(d.name)+' — '+d.wattage+'W</span>';
+        }).join('')
+        +'</div></div></div>'
+      :'')
+    +'</div>';
+}
+
+function sumCard(iconHtml, bg, color, title, val, sub) {
+  return '<div class="card"><div class="card-header flex justify-between items-center" style="padding-bottom:6px">'
+    +'<span style="font-size:12px;font-weight:500;color:var(--s500)">'+title+'</span>'
+    +'<span style="padding:7px;background:'+bg+';color:'+color+';border-radius:8px;display:flex">'+iconHtml+'</span>'
+    +'</div><div class="card-content" style="padding-top:4px">'
+    +'<div style="font-size:22px;font-weight:700;color:var(--s900)">'+val+'</div>'
+    +'<div style="font-size:11px;color:var(--s500);margin-top:3px">'+sub+'</div>'
+    +'</div></div>';
+}
+
+// ═══════════════════════════════════
+// DEVICES
+// ═══════════════════════════════════
+function htmlDevices() {
+  var years = []; for(var y=new Date().getFullYear();y>=2000;y--) years.push(y);
+  return '<div class="space-yl">'
+    +'<div class="section-header"><h2 class="section-title">Manajemen Perangkat</h2><p class="section-sub">Kelola daftar elektronik, daya, dan status penggunaannya.</p></div>'
+    +'<div class="grid gcol12">'
+    // Form
+    +'<div class="card" style="align-self:start"><div class="card-header"><div class="card-title">'+ico('plus',16)+' Tambah Perangkat</div><div class="card-desc">Masukkan data perangkat elektronik di rumah Anda</div></div>'
+    +'<div class="card-content"><form id="form-device">'
+    +'<div class="form-group"><label class="form-label">Jenis Perangkat</label>'
+    +'<select class="form-select" id="dev-type" onchange="onDevType(this.value)">'
+    +'<option value="">-- Pilih atau custom --</option>'
+    +Object.keys(PRESETS).map(function(k){return '<option value="'+esc(k)+'">'+esc(k)+'</option>';}).join('')
+    +'<option value="custom">Perangkat Lainnya (Custom)</option>'
+    +'</select></div>'
+    +'<div class="form-group hidden" id="dev-custom-wrap"><label class="form-label">Nama Perangkat</label><input class="form-input" id="dev-custom" placeholder="Contoh: Smart TV"></div>'
+    +'<div class="hidden" id="dev-preset-info" style="margin-bottom:14px"><div class="info-box info-indigo">'+ico('info',14)+'<span id="dev-preset-txt"></span></div></div>'
+    +'<div class="g2cols">'
+    +'<div class="form-group"><label class="form-label">Merek <span class="opt">(Opsional)</span></label><input class="form-input" id="dev-brand" placeholder="Samsung, LG..."></div>'
+    +'<div class="form-group"><label class="form-label">Model <span class="opt">(Opsional)</span></label><input class="form-input" id="dev-model" placeholder="AR09A..."></div>'
+    +'</div>'
+    +'<div class="g2cols">'
+    +'<div class="form-group"><label class="form-label">Daya (Watt)</label><input class="form-input" id="dev-watt" type="number" placeholder="900" min="1"></div>'
+    +'<div class="form-group"><label class="form-label">Jam Pakai/Hari</label><input class="form-input" id="dev-hours" type="number" step="0.5" placeholder="8" min="0.5"></div>'
+    +'</div>'
+    +'<div class="form-group"><label class="form-label">Tahun Pembelian <span class="opt">(Opsional)</span></label>'
+    +'<select class="form-select" id="dev-year"><option value="">Pilih tahun</option>'
+    +years.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join('')
+    +'</select></div>'
+    +'<button type="submit" class="btn btn-primary btn-block">'+ico('plus',15)+' Tambahkan Perangkat</button>'
+    +'</form></div></div>'
+    // List
+    +'<div class="space-y">'
+    +'<div class="flex gap-3"><div style="position:relative;flex:1">'
+    +'<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--s400)">'+ico('search',16)+'</span>'
+    +'<input class="form-input" id="dev-search" placeholder="Cari perangkat..." style="padding-left:34px" oninput="renderDeviceList()">'
+    +'</div>'
+    +'<select class="form-select" id="dev-filter" style="width:160px" onchange="renderDeviceList()">'
+    +'<option value="">Semua Kategori</option><option>Pendingin</option><option>Elektronik</option>'
+    +'<option>Penerangan</option><option>Dapur</option><option>Kamar Mandi</option><option>Lainnya</option>'
+    +'</select></div>'
+    +'<div id="device-list-container"></div>'
+    +'</div>'
+    +'</div></div>';
+}
+
+function onDevType(val) {
+  var wrap = q('dev-custom-wrap'), info = q('dev-preset-info'), txt = q('dev-preset-txt'), wEl = q('dev-watt');
+  if(val==='custom'){wrap.classList.remove('hidden');info.classList.add('hidden');if(wEl)wEl.value='';}
+  else if(val&&PRESETS[val]){
+    wrap.classList.add('hidden');
+    if(wEl) wEl.value=PRESETS[val].w;
+    txt.innerHTML='Daya <strong>'+PRESETS[val].w+' W</strong> adalah referensi untuk <strong>'+esc(val)+'</strong>. Sesuaikan jika berbeda.';
+    info.classList.remove('hidden');
+  } else {wrap.classList.add('hidden');info.classList.add('hidden');}
+}
+
+function renderDeviceList() {
+  var c = q('device-list-container'); if(!c) return;
+  var srch = (qv('dev-search')||'').toLowerCase();
+  var filt = qv('dev-filter')||'';
+  var list = S.devices.filter(function(d){
+    return (d.name.toLowerCase().includes(srch)||(d.brand||'').toLowerCase().includes(srch))
+      && (!filt||d.category===filt);
+  });
+  if(list.length===0){
+    c.innerHTML='<div class="card"><div class="card-content" style="text-align:center;padding:40px;color:var(--s400)">'
+      +ico('device',40)+'<div style="margin-top:10px;font-weight:500">Tidak ada perangkat ditemukan</div>'
+      +'<div style="font-size:12px;margin-top:4px">Coba ubah filter atau kata kunci</div></div></div>';
+    return;
+  }
+  c.innerHTML='<div class="card"><div class="card-header"><div class="card-title">Daftar Perangkat</div>'
+    +'<div class="card-desc">Total '+list.length+' perangkat</div></div>'
+    +'<div class="card-content space-y">'
+    +list.map(function(d){
+      var isAct = d.status==='active';
+      var catIco = CAT_ICO[d.category]||'laptop';
+      var catBdg = CAT_BADGE[d.category]||'badge-gray';
+      return '<div class="device-item'+(isAct?'',' inactive')+'">'
+        +'<div class="flex items-start gap-3 flex-1" style="min-width:0">'
+        +'<div style="padding:8px;border-radius:10px;flex-shrink:0;background:'+(isAct?'#eef2ff':'var(--s100)')+';color:'+(isAct?'#4f46e5':'var(--s400)')+'">'+ico(catIco,16)+'</div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div class="flex flex-wrap items-center gap-1" style="margin-bottom:3px">'
+        +'<span style="font-weight:600;color:var(--s900)">'+esc(d.name)+(d.year?' <span style="color:var(--s400);font-weight:400">('+d.year+')</span>':'')+'</span>'
+        +' <span class="badge '+catBdg+'">'+esc(d.category)+'</span>'
+        +' <span class="badge '+(isAct?'badge-active':'badge-inactive')+'">'+(isAct?'Aktif':'Nonaktif')+'</span>'
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--s500)">'
+        +(d.brand&&d.brand!=='Unbranded'?esc(d.brand)+(d.model&&d.model!=='Unknown'?' '+esc(d.model):'')+'  &nbsp;·&nbsp; ':'')
+        +'<strong style="color:var(--s700)">'+d.wattage+' W</strong> &nbsp;·&nbsp; <strong style="color:var(--s700)">'+d.hoursPerDay+' jam/hari</strong>'
+        +'</div></div></div>'
+        +'<div class="device-actions">'
+        +'<button class="'+(isAct?'btn-tog-on':'btn-tog-off')+'" onclick="toggleDevice(\''+d.id+'\')" title="'+(isAct?'Nonaktifkan':'Aktifkan')+'">'+ico(isAct?'power':'poweroff',16)+'</button>'
+        +'<button class="btn-del" onclick="deleteDevice(\''+d.id+'\')" title="Hapus">'+ico('trash',16)+'</button>'
+        +'</div></div>';
+    }).join('')
+    +'</div></div>';
+}
+
+// ═══════════════════════════════════
+// LOGS
+// ═══════════════════════════════════
+function htmlLogs() {
+  var actDev = S.devices.filter(function(d){return d.status==='active';});
+  var byDate = {};
+  S.logs.forEach(function(l){byDate[l.date]=(byDate[l.date]||0)+l.totalKwh;});
+  var chartData = Object.keys(byDate).sort().slice(-7).map(function(date){
+    return {label:shortDate(date), kwh:parseFloat(byDate[date].toFixed(2))};
+  });
+  var maxK = Math.max.apply(null, chartData.map(function(d){return d.kwh;}).concat([1]));
+
+  return '<div class="space-yl">'
+    +'<div class="section-header"><h2 class="section-title">Log Penggunaan</h2><p class="section-sub">Catat dan pantau penggunaan perangkat spesifik dari hari ke hari.</p></div>'
+    +'<div class="grid gcol12">'
+    // Form
+    +'<div class="card" style="align-self:start"><div class="card-header"><div class="card-title">Catat Pemakaian</div><div class="card-desc">Pilih perangkat, tanggal, dan durasi</div></div>'
+    +'<div class="card-content"><form id="form-log">'
+    +'<div class="form-group"><label class="form-label">Perangkat</label>'
+    +'<select class="form-select" id="log-device" required><option value="">Pilih perangkat aktif</option>'
+    +actDev.map(function(d){return '<option value="'+esc(d.id)+'">'+esc(d.name)+' — '+d.wattage+'W</option>';}).join('')
+    +'</select></div>'
+    +'<div class="form-group"><label class="form-label">Tanggal</label><input class="form-input" id="log-date" type="date" value="'+todayStr()+'" required></div>'
+    +'<div class="form-group"><label class="form-label">Durasi (Jam)</label><input class="form-input" id="log-dur" type="number" step="0.5" min="0.5" placeholder="Contoh: 4.5" required></div>'
+    +'<div class="info-box info-blue" style="margin-bottom:12px">'+ico('help',14)+'<span>Nilai <strong>kWh & emisi karbon</strong> akan diisi model AI. Data ini dicatat sebagai <em>pending</em>.</span></div>'
+    +'<button type="submit" class="btn btn-primary btn-block">'+ico('plus',15)+' Simpan Log</button>'
+    +'</form></div></div>'
+    // Right
+    +'<div class="space-yl">'
+    +'<div class="card"><div class="card-header"><div class="card-title">Riwayat 7 Hari Terakhir</div><div class="card-desc">Total kWh per hari dari log tersimpan</div></div>'
+    +'<div class="card-content">'
+    +(chartData.length>0
+      ?'<div class="bar-chart-wrap"><div class="bar-chart-bars">'
+        +chartData.map(function(d){
+          return '<div class="bar-col"><div class="bar-col-val">'+(d.kwh>0?d.kwh.toFixed(1):'')+'</div>'
+            +'<div class="bar-fill" style="height:'+Math.max((d.kwh/maxK)*140,2)+'px;background:'+(d.kwh>0?'#6366f1':'#e2e8f0')+'" title="'+d.label+': '+d.kwh+' kWh"></div></div>';
+        }).join('')
+        +'</div><div class="bar-chart-labels">'+chartData.map(function(d){return '<div class="bar-lbl">'+d.label+'</div>';}).join('')+'</div></div>'
+      :'<div style="padding:40px 0;text-align:center;color:var(--s400);font-size:13px">Belum ada data riwayat</div>'
+    )+'</div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">Tabel Log Terbaru</div><div class="card-desc">Menampilkan 10 log terakhir</div></div>'
+    +'<div class="card-content" style="padding:0 0 4px">'
+    +(S.logs.length>0
+      ?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Tanggal</th><th>Perangkat</th><th>Durasi</th><th>Konsumsi</th><th>Emisi CO₂</th></tr></thead><tbody>'
+        +[].concat(S.logs).reverse().slice(0,10).map(function(l){
+          var dev = S.devices.filter(function(d){return d.id===l.deviceId;})[0];
+          var pend = l.totalKwh===0;
+          return '<tr><td><div class="flex items-center gap-2">'+ico('calendar',14)+' '+l.date+'</div></td>'
+            +'<td>'+(dev?esc(dev.name):'<span style="color:var(--s400);font-style:italic">Perangkat dihapus</span>')+'</td>'
+            +'<td><div class="flex items-center gap-1">'+ico('clock',14)+' '+l.durationHours+' jam</div></td>'
+            +'<td>'+(pend?'<span class="badge badge-pending">Menunggu AI</span>'
+              :'<span style="color:#4f46e5;font-weight:600">'+l.totalKwh.toFixed(2)+' kWh</span>')+'</td>'
+            +'<td>'+(pend?'<span style="color:var(--s400)">—</span>'
+              :'<div class="flex items-center gap-1" style="color:#15803d;font-weight:500">'+ico('leaf',14)+' '+l.carbonEmission.toFixed(2)+' kg</div>')+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>'
+      :'<div style="padding:40px;text-align:center;color:var(--s400);font-size:13px">Belum ada log penggunaan</div>'
+    )+'</div></div>'
+    +'</div>'
+    +'</div></div>';
+}
+
+// ═══════════════════════════════════
+// RECOMMENDATIONS
+// ═══════════════════════════════════
+var TIPS = [
+  {type:'ramah lingkungan',title:'Cabut Stop Kontak Saat Tidak Digunakan',desc:'Matikan atau cabut perangkat dari stop kontak ketika tidak dipakai. Mode standby tetap mengonsumsi daya.',icon:'plug'},
+  {type:'efisiensi',title:'Atur Jadwal Penggunaan',desc:'Gunakan timer otomatis pada AC dan water heater. Matikan 30–60 menit sebelum tidur untuk hemat energi.',icon:'clock'},
+  {type:'hemat',title:'Optimalkan Suhu AC',desc:'Atur suhu AC di 24–26°C. Setiap penurunan 1°C di bawah 25°C meningkatkan konsumsi ~6%.',icon:'thermo'},
+  {type:'hemat',title:'Gunakan di Luar Jam Puncak',desc:'Hindari perangkat berdaya tinggi pada jam puncak PLN (17:00–22:00) untuk menjaga stabilitas tegangan.',icon:'trending_dn'},
+  {type:'ramah lingkungan',title:'Maksimalkan Cahaya Alami',desc:'Manfaatkan sinar matahari siang hari. Matikan lampu di ruangan yang sudah terang secara alami.',icon:'bulb'},
+];
+var TIP_CAT = {
+  'Pendingin':{type:'perhatian',title:'Perawatan Rutin Pendingin',desc:'Bersihkan filter AC sebulan sekali. Pendingin kotor bisa konsumsi 15–25% lebih banyak.',icon:'warn'},
+  'Elektronik':{type:'efisiensi',title:'Mode Hemat Daya Elektronik',desc:'Aktifkan power saving mode pada TV, laptop, komputer. Kurangi kecerahan layar 50%.',icon:'trending_dn'},
+  'Dapur':{type:'hemat',title:'Efisiensi Perangkat Dapur',desc:'Gunakan rice cooker sesuai kapasitas. Jangan sering buka kulkas dan pastikan pintu tertutup rapat.',icon:'bulb'},
+};
+var TYPE_STYLE = {
+  perhatian:'background:#fee2e2;color:#dc2626',hemat:'background:#fef3c7;color:#d97706',
+  'ramah lingkungan':'background:#d1fae5;color:#059669',efisiensi:'background:#dbeafe;color:#2563eb'
+};
+var TYPE_BADGE = {perhatian:'badge-red',hemat:'badge-pending','ramah lingkungan':'badge-emerald',efisiensi:'badge-blue'};
+
+function htmlRecommendations() {
+  var active = S.devices.filter(function(d){return d.status==='active';});
+  if(active.length===0) return '<div style="text-align:center;padding:80px 0">'
+    +'<span style="color:#e2e8f0">'+ico('zap',56)+'</span>'
+    +'<h3 style="font-size:20px;font-weight:600;color:var(--s700);margin-top:16px">Belum Ada Rekomendasi</h3>'
+    +'<p style="color:var(--s400);font-size:13px;margin-top:6px">Tambahkan perangkat terlebih dahulu.</p></div>';
+
+  var cats = []; active.forEach(function(d){if(cats.indexOf(d.category)<0)cats.push(d.category);});
+  var dynTips = cats.filter(function(c){return TIP_CAT[c];}).map(function(c){return TIP_CAT[c];});
+  var allTips = dynTips.concat(TIPS);
+  var top3 = [].concat(active).sort(function(a,b){return b.wattage-a.wattage;}).slice(0,3);
+  var score = (S.user&&S.user.energySavingScore)||85;
+
+  return '<div class="space-yl">'
+    +'<div class="section-header"><h2 class="section-title">Rekomendasi Cerdas</h2><p class="section-sub">Saran penghematan berdasarkan jenis perangkat yang terdaftar.</p></div>'
+    +'<div class="grid" style="grid-template-columns:1fr 2fr;gap:24px">'
+    +'<div class="score-card"><span style="color:#fde047">'+ico('medal',40)+'</span>'
+    +'<div style="font-size:15px;font-weight:600">Skor Hemat Energi</div>'
+    +'<div class="score-num">'+score+'<span style="font-size:20px;font-weight:400;opacity:.6"> / 100</span></div>'
+    +'<div class="prog-bar"><div class="prog-fill" style="width:'+score+'%"></div></div>'
+    +'<p style="font-size:12px;color:rgba(255,255,255,.8)">'+ico('sparkles',14)+' Anda lebih hemat dari 60% pengguna lain!</p></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">'+ico('bulb',16)+' Saran Penghematan</div><div class="card-desc">Disesuaikan dengan perangkat yang terdaftar</div></div>'
+    +'<div class="card-content space-y">'
+    +allTips.slice(0,4).map(function(t){
+      return '<div class="flex items-start gap-3 p-3" style="border:1px solid var(--s100);border-radius:12px">'
+        +'<span style="padding:10px;border-radius:10px;flex-shrink:0;'+TYPE_STYLE[t.type]+'">'+ico(t.icon,18)+'</span>'
+        +'<div><div class="flex flex-wrap items-center gap-2" style="margin-bottom:4px">'
+        +'<span style="font-weight:600;color:var(--s900);font-size:13px">'+esc(t.title)+'</span>'
+        +'<span class="badge '+TYPE_BADGE[t.type]+'">'+t.type+'</span></div>'
+        +'<p style="font-size:12px;color:var(--s500);line-height:1.5">'+esc(t.desc)+'</p>'
+        +'</div></div>';
+    }).join('')
+    +'</div></div></div>'
+    +(top3.length>0
+      ?'<div class="card"><div class="card-header"><div class="card-title">'+ico('warn',16)+' Perangkat dengan Daya Terbesar</div><div class="card-desc">Fokus pada perangkat ini untuk dampak penghematan paling signifikan</div></div>'
+        +'<div class="card-content"><div class="grid g3">'
+        +top3.map(function(d,i){
+          return '<div class="top-card"><div class="flex justify-between items-center">'
+            +'<span class="rank-badge" style="background:'+(i===0?'#ef4444':i===1?'#f97316':'#eab308')+'">&#35;'+(i+1)+'</span>'
+            +'<span class="badge badge-gray">'+esc(d.category)+'</span></div>'
+            +'<div><div style="font-weight:700;color:var(--s900)">'+esc(d.name)+'</div>'
+            +(d.brand&&d.brand!=='Unbranded'?'<div style="font-size:11px;color:var(--s400)">'+esc(d.brand)+(d.model&&d.model!=='Unknown'?' '+esc(d.model):'')+'</div>':'')
+            +'</div>'
+            +'<div class="stat-row"><span style="color:var(--s500)">Daya</span><span style="font-weight:600;color:#ea580c">'+d.wattage+' W</span></div>'
+            +'<div class="stat-row"><span style="color:var(--s500)">Pemakaian</span><span style="font-weight:600;color:var(--s700)">'+d.hoursPerDay+' jam/hari</span></div>'
+            +'</div>';
+        }).join('')
+        +'</div></div></div>'
+      :'')
+    +(allTips.length>4
+      ?'<div class="card"><div class="card-header"><div class="card-title">'+ico('leaf',16)+' Tips Tambahan</div></div>'
+        +'<div class="card-content"><div class="grid g2">'
+        +allTips.slice(4).map(function(t){
+          return '<div class="flex items-start gap-3 p-3" style="border:1px solid var(--s100);border-radius:10px">'
+            +'<span style="padding:8px;border-radius:8px;flex-shrink:0;'+TYPE_STYLE[t.type]+'">'+ico(t.icon,16)+'</span>'
+            +'<div><div style="font-weight:600;font-size:13px;color:var(--s900)">'+esc(t.title)+'</div>'
+            +'<p style="font-size:11px;color:var(--s500);margin-top:3px;line-height:1.5">'+esc(t.desc)+'</p></div></div>';
+        }).join('')
+        +'</div></div></div>'
+      :'')
+    +'</div>';
+}
+
+// ═══════════════════════════════════
+// TOKEN
+// ═══════════════════════════════════
+function htmlToken() {
+  var spent = S.tokens.reduce(function(s,t){return s+t.amountRupiah;},0);
+  var tKwh  = S.tokens.reduce(function(s,t){return s+t.kwhReceived;},0);
+  var latest = S.tokens.length>0?[].concat(S.tokens).sort(function(a,b){return b.date.localeCompare(a.date);})[0]:null;
+  var lastKwh = (latest&&latest.kwhReceived)||0;
+  var remain = Math.max(0, lastKwh - lastKwh*0.4);
+  var pct = lastKwh>0?(remain/lastKwh)*100:0;
+
+  return '<div class="space-yl">'
+    +'<div class="section-header"><h2 class="section-title">Token &amp; Pembayaran</h2><p class="section-sub">Catat pembelian token listrik dan pantau riwayat pengeluaran.</p></div>'
+    +'<div class="grid gcol12">'
+    +'<div class="space-yl">'
+    +'<div style="background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;border-radius:14px;padding:20px">'
+    +'<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#bfdbfe;margin-bottom:4px">'+ico('activity',16)+' Estimasi Sisa Listrik</div>'
+    +'<div style="font-size:11px;color:#93c5fd;margin-bottom:16px">Berdasarkan pembelian token terakhir</div>'
+    +'<div style="font-size:36px;font-weight:800">'+remain.toFixed(1)+'<span style="font-size:16px;font-weight:400;color:#bfdbfe;margin-left:4px">kWh</span></div>'
+    +'<div style="margin:14px 0 6px"><div style="display:flex;justify-content:space-between;font-size:12px;color:#bfdbfe;margin-bottom:6px">'
+    +'<span>Sisa dari '+lastKwh.toFixed(1)+' kWh</span><span>'+Math.round(pct)+'%</span></div>'
+    +'<div class="prog-bar"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>'
+    +'<div style="font-size:11px;color:#93c5fd;display:flex;align-items:center;gap:4px">'+ico('info',12)+' Estimasi kasar — integrasi AI untuk prediksi akurat</div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">Catat Pembelian Token</div><div class="card-desc">Isi nominal &amp; kWh sesuai struk</div></div>'
+    +'<div class="card-content"><form id="form-token">'
+    +'<div class="form-group"><label class="form-label">Tanggal Pembelian</label><input class="form-input" id="tok-date" type="date" value="'+todayStr()+'" required></div>'
+    +'<div class="form-group"><label class="form-label">Nominal (Rp)</label><input class="form-input" id="tok-amount" type="text" placeholder="Contoh: 100000" required></div>'
+    +'<div class="form-group"><label class="form-label">kWh Diterima</label><input class="form-input" id="tok-kwh" type="number" step="0.1" min="0" placeholder="Lihat struk (cth: 67.8)">'
+    +'<div style="font-size:11px;color:var(--s400);margin-top:4px">Isi sesuai jumlah kWh di struk token.</div></div>'
+    +'<button type="submit" class="btn btn-primary btn-block">'+ico('plus',15)+' Simpan Transaksi</button>'
+    +'</form></div></div>'
+    +'</div>'
+    +'<div class="space-yl">'
+    +'<div class="grid g2">'
+    +sumCard(ico('wallet',16),'#f5f3ff','#6d28d9','Total Pengeluaran',fmtRp(spent),'Dari '+S.tokens.length+' transaksi')
+    +sumCard(ico('zap',16),'#fff7ed','#ea580c','Total Daya Dibeli',tKwh.toFixed(1)+' kWh','Akumulasi semua transaksi')
+    +'</div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">Riwayat Pembelian Token</div><div class="card-desc">Semua transaksi yang dicatat</div></div>'
+    +'<div class="card-content" style="padding:0 0 4px">'
+    +(S.tokens.length>0
+      ?'<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Tanggal</th><th>Nominal</th><th>Daya (kWh)</th></tr></thead><tbody>'
+        +[].concat(S.tokens).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){
+          return '<tr><td><div class="flex items-center gap-2">'
+            +'<span style="padding:6px;background:var(--primary-lt);color:var(--primary);border-radius:8px;display:flex">'+ico('calendar',14)+'</span>'
+            +t.date+'</div></td>'
+            +'<td style="font-weight:600;color:var(--s900)">'+fmtRp(t.amountRupiah)+'</td>'
+            +'<td>'+(t.kwhReceived>0?'<span style="color:#ea580c;font-weight:600">+'+t.kwhReceived.toFixed(1)+' kWh</span>'
+              :'<span style="color:var(--s400);font-style:italic;font-size:12px">Belum diisi</span>')+'</td></tr>';
+        }).join('')
+        +'</tbody></table></div>'
+      :'<div style="padding:48px;text-align:center"><span style="color:#e2e8f0">'+ico('wallet',40)+'</span><div style="color:var(--s400);font-size:13px;margin-top:10px">Belum ada riwayat</div></div>'
+    )+'</div></div>'
+    +'</div></div></div>';
+}
+
+// ═══════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════
+function htmlProfile() {
+  var score = (S.user&&S.user.energySavingScore)||85;
+  var circ = score+' 100';
+  return '<div class="space-yl" style="max-width:640px;margin:0 auto">'
+    +'<div class="section-header"><h2 class="section-title">Profil Pengguna</h2><p class="section-sub">Kelola informasi akun dan pantau statistik penggunaan.</p></div>'
+    +'<div class="card"><div class="card-header"><div class="flex justify-between items-center">'
+    +'<div class="flex items-center gap-3">'
+    +'<div style="width:56px;height:56px;background:var(--primary-lt);border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--primary)">'+ico('user',28)+'</div>'
+    +'<div><div style="font-size:18px;font-weight:700;color:var(--s900)">'+esc(S.user?S.user.username:'')+'</div>'
+    +'<div style="font-size:13px;color:var(--s500)">'+esc(S.user?S.user.email:'')+'</div></div></div>'
+    +'<span class="badge badge-active">Aktif</span></div></div>'
+    +'<div class="card-content border-t" style="padding-top:16px">'
+    +'<div class="grid g3" style="margin-bottom:16px">'
+    +[{l:'Perangkat Terdaftar',v:S.devices.length},{l:'Log Penggunaan',v:S.logs.length},{l:'Pembelian Token',v:S.tokens.length}]
+      .map(function(s){
+        return '<div style="text-align:center;padding:12px;background:var(--s50);border-radius:10px">'
+          +'<div style="font-size:22px;font-weight:700;color:var(--primary)">'+s.v+'</div>'
+          +'<div style="font-size:11px;color:var(--s500);margin-top:2px">'+s.l+'</div></div>';
+      }).join('')
+    +'</div>'
+    +'<div class="flex justify-between items-center" style="margin-bottom:12px">'
+    +'<span style="font-weight:600;color:var(--s800)">Informasi Akun</span>'
+    +'<button class="btn btn-ghost btn-sm" onclick="openEditProfile()" style="color:var(--primary);gap:6px">'+ico('pencil',14)+' Edit</button>'
+    +'</div>'
+    +'<div class="g2cols">'
+    +'<div class="form-group"><label class="form-label">'+ico('user',12)+' Username</label><input class="form-input" value="'+esc(S.user?S.user.username:'')+'" disabled></div>'
+    +'<div class="form-group"><label class="form-label">'+ico('mail',12)+' Email</label><input class="form-input" value="'+esc(S.user?S.user.email:'')+'" disabled></div>'
+    +'</div></div></div>'
+    +'<div class="card" style="border-color:#c7d2fe;background:linear-gradient(135deg,#eef2ff,#eff6ff)">'
+    +'<div class="card-content" style="display:flex;align-items:center;gap:20px;padding:20px">'
+    +'<div style="position:relative;width:64px;height:64px;flex-shrink:0">'
+    +'<svg width="64" height="64" viewBox="0 0 36 36" style="transform:rotate(-90deg)">'
+    +'<circle cx="18" cy="18" r="15.9" fill="none" stroke="#e0e7ff" stroke-width="2.5"/>'
+    +'<circle cx="18" cy="18" r="15.9" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="'+circ+'" stroke-linecap="round"/>'
+    +'</svg>'
+    +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3730a3">'+score+'</span></div>'
+    +'<div><div style="font-weight:700;color:#3730a3">Skor Hemat Energi</div>'
+    +'<p style="font-size:13px;color:#4338ca;margin-top:2px">Anda lebih hemat dari <strong>60%</strong> pengguna lain!</p>'
+    +'<p style="font-size:11px;color:var(--s400);margin-top:4px">Skor meningkat seiring kebiasaan hemat energi.</p>'
+    +'</div></div></div>'
+    +'<div class="card" style="border-color:#fecaca"><div class="card-header">'
+    +'<div class="card-title" style="color:var(--red)">'+ico('shield',16)+' Keamanan &amp; Sesi</div>'
+    +'<div class="card-desc">Kelola sesi aktif Anda</div></div>'
+    +'<div class="card-content"><div class="flex justify-between items-center p-4" style="border:1px solid #fecaca;background:#fef2f2;border-radius:10px;gap:12px;flex-wrap:wrap">'
+    +'<div><div style="font-weight:600;color:var(--s800)">Keluar dari Perangkat Ini</div>'
+    +'<div style="font-size:12px;color:var(--s500);margin-top:2px">Sesi akan berakhir. Data localStorage tidak dihapus.</div></div>'
+    +'<button class="btn btn-danger" onclick="handleLogout()" style="gap:6px;flex-shrink:0">'+ico('logout',15)+' Keluar Akun</button>'
+    +'</div></div></div>'
+    +'</div>';
+}
+
+// ═══════════════════════════════════
+// LANDING
+// ═══════════════════════════════════
+function htmlLanding() {
+  var features = [
+    {icon:'zap',bg:'#eff6ff',cl:'#2563eb',title:'Catat Perangkat',desc:'Daftarkan semua perangkat elektronik — dari AC, kulkas, hingga lampu LED — lengkap dengan merek, model, dan jam pemakaian.'},
+    {icon:'bar_chart',bg:'#eef2ff',cl:'#4f46e5',title:'Visualisasi Mudah',desc:'Pantau tren pemakaian harian melalui grafik interaktif. Lihat perangkat mana yang paling banyak mengonsumsi listrik.'},
+    {icon:'bulb',bg:'#fffbeb',cl:'#d97706',title:'Rekomendasi Cerdas',desc:'Dapatkan saran hemat energi yang dipersonalisasi berdasarkan perangkat terdaftar, didukung integrasi model AI.'},
+    {icon:'leaf',bg:'#ecfdf5',cl:'#059669',title:'Jejak Karbon',desc:'Monitor emisi CO₂ dari konsumsi listrik Anda dan bantu jaga lingkungan dengan kebiasaan yang lebih bijak.'},
+    {icon:'activity',bg:'#fef2f2',cl:'#dc2626',title:'Log Penggunaan',desc:'Catat penggunaan perangkat setiap hari dan lihat riwayat konsumsi 7 hari terakhir dalam satu tampilan bersih.'},
+    {icon:'shield_ck',bg:'#f0fdfa',cl:'#0d9488',title:'Data Lokal Aman',desc:'Semua data disimpan di perangkat Anda sendiri (localStorage). Tidak ada data yang dikirim ke server.'},
+  ];
+  return '<div class="landing">'
+    +'<nav class="landing-nav">'
+    +'<div class="flex items-center gap-2"><div class="logo-icon">'+ico('zap',18)+'</div>'
+    +'<span style="font-size:17px;font-weight:700;color:var(--s900)">bagiWatt</span></div>'
+    +'<button class="btn btn-ghost" id="nav-login-btn" style="color:var(--primary);font-weight:600">Masuk</button>'
+    +'</nav>'
+    +'<div class="lmax">'
+    +'<div class="hero">'
+    +'<div>'
+    +'<div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#dcfce7;color:#15803d;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:20px">'
+    +'<span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>'
+    +' Hemat Energi Dimulai dari Kesadaran</div>'
+    +'<h1 class="hero-title">Pantau Listrik Rumah <span style="color:var(--primary)">Anda</span></h1>'
+    +'<p class="hero-sub">bagiWatt membantu memahami konsumsi listrik setiap perangkat di rumah. Catat, pantau, dan hemat — tanpa perlu ahli teknik.</p>'
+    +'<button class="btn btn-primary btn-lg" id="hero-cta-btn" style="gap:8px;box-shadow:0 8px 24px rgba(79,70,229,.25)">Mulai Sekarang '+ico('chevron_r',18)+'</button>'
+    +'<div class="stat-chips">'
+    +'<div class="stat-chip"><span style="font-weight:700;color:var(--primary)">15+</span><span>Perangkat didukung</span></div>'
+    +'<div class="stat-chip"><span style="font-weight:700;color:var(--primary)">100%</span><span>Data lokal, privasi aman</span></div>'
+    +'<div class="stat-chip"><span style="font-weight:700;color:var(--primary)">✓</span><span>Gratis selamanya</span></div>'
+    +'</div>'
+    +'</div>'
+    +'<div><div class="hero-img-box">'
+    +'<img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80" alt="Smart Home" onerror="this.parentElement.style.background=\'linear-gradient(135deg,#eef2ff,#dbeafe)\'">'
+    +'<div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.25),transparent)"></div>'
+    +'<div class="float-badge"><div class="float-icon" style="color:#16a34a">'+ico('activity',18)+'</div>'
+    +'<div><div style="font-size:11px;color:var(--s500);font-weight:500">Penghematan Bulan Ini</div><div style="font-weight:700;color:var(--s800)">Rp 145.000</div></div></div>'
+    +'</div></div>'
+    +'</div>'
+    +'<div class="feat-grid">'
+    +'<div style="text-align:center;margin-bottom:40px"><h2 style="font-size:28px;font-weight:700;color:var(--s900)">Semua yang Anda Butuhkan</h2><p style="color:var(--s500);max-width:480px;margin:10px auto 0;font-size:14px">Fitur lengkap untuk monitoring konsumsi listrik rumah, dirancang agar mudah digunakan siapa saja.</p></div>'
+    +'<div class="grid g3">'
+    +features.map(function(f){
+      return '<div class="feat-card"><div class="feat-icon" style="background:'+f.bg+';color:'+f.cl+'">'+ico(f.icon,26)+'</div>'
+        +'<h3 style="font-weight:700;color:var(--s900);font-size:15px;margin-bottom:8px">'+f.title+'</h3>'
+        +'<p style="color:var(--s500);font-size:13px;line-height:1.6">'+f.desc+'</p></div>';
+    }).join('')
+    +'</div></div>'
+    +'<div class="cta-banner">'
+    +'<div style="margin-bottom:16px">'+ico('zap',44)+'</div>'
+    +'<h2 style="font-size:28px;font-weight:700;margin-bottom:10px">Siap Mulai Hemat Listrik?</h2>'
+    +'<p style="color:rgba(255,255,255,.8);margin-bottom:24px;font-size:14px">Daftar atau masuk sekarang — gratis, tanpa email konfirmasi.</p>'
+    +'<button class="btn btn-lg" id="cta-btn" style="background:#fff;color:var(--primary);font-weight:700;gap:8px">Mulai Sekarang '+ico('chevron_r',18)+'</button>'
+    +'</div>'
+    +'</div>'
+    +'<footer class="land-footer">© 2026 bagiWatt — Monitoring Listrik Rumah yang Cerdas</footer>'
+    +'</div>';
+}
+
+function bindLandingEvents() {
+  var nb = q('nav-login-btn'), hb = q('hero-cta-btn'), cb = q('cta-btn');
+  if(nb) nb.addEventListener('click', function(){goTo('login');});
+  if(hb) hb.addEventListener('click', function(){goTo('login');});
+  if(cb) cb.addEventListener('click', function(){goTo('login');});
+}
+
+// ═══════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════
+function htmlLogin() {
+  return '<div class="login-page">'
+    +'<button class="login-back-btn" id="back-btn">'+ico('arrow_l',16)+' Kembali</button>'
+    +'<div class="login-card">'
+    +'<div class="login-hdr">'
+    +'<div class="flex items-center gap-2" style="margin-bottom:12px">'
+    +'<div class="logo-icon">'+ico('zap',18)+'</div>'
+    +'<span style="font-size:17px;font-weight:700;color:var(--s900)">bagiWatt</span></div>'
+    +'<div id="login-title" style="font-size:20px;font-weight:700;color:var(--s900)">Selamat Datang Kembali</div>'
+    +'<div id="login-sub" style="font-size:13px;color:var(--s500);margin-top:4px">Masukkan username dan password untuk melanjutkan</div>'
+    +'</div>'
+    +'<div class="login-bdy">'
+    +'<div id="login-err" class="hidden"></div>'
+    +'<form id="form-login">'
+    +'<div class="form-group"><label class="form-label" for="l-user">Username</label>'
+    +'<input class="form-input" id="l-user" type="text" placeholder="Masukkan username" autocomplete="username" required></div>'
+    +'<div class="form-group"><label class="form-label" for="l-pwd">Password</label>'
+    +'<div class="pw-wrap"><input class="form-input" id="l-pwd" type="password" placeholder="Masukkan password" style="padding-right:36px" required>'
+    +'<button type="button" class="pw-toggle" id="pwd-toggle">'+ico('eye',16)+'</button></div></div>'
+    +'<button type="submit" class="btn btn-primary btn-block" id="login-btn" style="margin-top:4px;height:40px">Masuk</button>'
+    +'<p style="text-align:center;font-size:12px;color:var(--s500);margin-top:14px">'
+    +'<span id="switch-text">Belum punya akun?</span>'
+    +'<button type="button" id="switch-btn" style="color:var(--primary);font-weight:600;background:none;border:none;cursor:pointer;margin-left:4px">Daftar</button>'
+    +'</p></form>'
+    +'<div class="demo-note">Ini adalah login simulasi — data disimpan di browser Anda (localStorage).</div>'
+    +'</div></div></div>';
+}
+
+function bindLoginEvents() {
+  var bb = q('back-btn');
+  if(bb) bb.addEventListener('click', function(){goTo('landing');});
+  var pt = q('pwd-toggle');
+  if(pt) pt.addEventListener('click', function(){
+    showPwd = !showPwd;
+    var inp = q('l-pwd'); if(inp) inp.type = showPwd?'text':'password';
+    pt.innerHTML = ico(showPwd?'eye_off':'eye', 16);
+  });
+  var sb = q('switch-btn');
+  if(sb) sb.addEventListener('click', function(){
+    loginMode = !loginMode;
+    q('login-title').textContent = loginMode?'Selamat Datang Kembali':'Buat Akun Baru';
+    q('login-sub').textContent   = loginMode?'Masukkan username dan password':'Daftar untuk mulai memantau konsumsi listrik';
+    q('login-btn').textContent   = loginMode?'Masuk':'Daftar Sekarang';
+    q('switch-text').textContent = loginMode?'Belum punya akun?':'Sudah punya akun?';
+    q('switch-btn').textContent  = loginMode?'Daftar':'Masuk';
+    var e = q('login-err'); if(e) e.classList.add('hidden');
+  });
+  var lf = q('form-login');
+  if(lf) lf.addEventListener('submit', function(e){
+    e.preventDefault();
+    var username = (qv('l-user')||'').trim();
+    var password = qv('l-pwd')||'';
+    if(!username||!password){ loginErr('Username dan password harus diisi.'); return; }
+    var users = JSON.parse(localStorage.getItem('bw_users')||'{}');
+    if(loginMode){
+      if(users[username]&&users[username]===password){
+        S.user = {username:username, email:username.toLowerCase()+'@example.com', energySavingScore:85};
+        saveState(); goTo('app','dashboard');
+      } else { loginErr('Username atau password salah.'); }
+    } else {
+      if(users[username]){ loginErr('Username sudah terdaftar, silakan masuk.'); return; }
+      users[username] = password;
+      localStorage.setItem('bw_users', JSON.stringify(users));
+      S.user = {username:username, email:username.toLowerCase()+'@example.com', energySavingScore:85};
+      saveState(); goTo('app','dashboard');
+    }
+  });
+}
+function loginErr(msg) {
+  var e = q('login-err'); if(!e) return;
+  e.innerHTML = msg; e.className = 'err-box';
+}
+
+// ═══════════════════════════════════
+// FORM BINDINGS (App sections)
+// ═══════════════════════════════════
+function bindForms() {
+  // Device form
+  var df = q('form-device');
+  if(df) df.addEventListener('submit', function(e){
+    e.preventDefault();
+    var typeEl = q('dev-type');
+    var isCustom = typeEl.value==='custom';
+    var name = isCustom?(qv('dev-custom')||'').trim():typeEl.value;
+    var watt = parseFloat(qv('dev-watt')||'0');
+    var hours = parseFloat(qv('dev-hours')||'0');
+    if(!name||!watt||!hours) return;
+    var preset = PRESETS[typeEl.value];
+    var category = isCustom?'Lainnya':(preset?preset.cat:'Lainnya');
+    S.devices.push({
+      id:uid(), name:name,
+      brand:(qv('dev-brand')||'').trim()||'Unbranded',
+      model:(qv('dev-model')||'').trim()||'Unknown',
+      category:category, wattage:watt, hoursPerDay:hours,
+      year:parseInt(qv('dev-year')||'0')||undefined,
+      status:'active'
+    });
+    saveState(); renderContent();
+  });
+  // Log form
+  var lf = q('form-log');
+  if(lf) lf.addEventListener('submit', function(e){
+    e.preventDefault();
+    var devId = qv('log-device'), date = qv('log-date'), dur = parseFloat(qv('log-dur')||'0');
+    if(!devId||!date||!dur) return;
+    S.logs.push({id:uid(), deviceId:devId, date:date, durationHours:dur, totalKwh:0, carbonEmission:0});
+    saveState(); renderContent();
+  });
+  // Token form
+  var tf = q('form-token');
+  if(tf) tf.addEventListener('submit', function(e){
+    e.preventDefault();
+    var date = qv('tok-date');
+    var amt = parseInt((qv('tok-amount')||'').replace(/[^0-9]/g,''))||0;
+    var kwh = parseFloat(qv('tok-kwh')||'0')||0;
+    if(!date||!amt) return;
+    S.tokens.push({id:uid(), date:date, amountRupiah:amt, kwhReceived:kwh});
+    saveState(); renderContent();
+  });
+}
+
+// ═══════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════
+function toggleDevice(id) {
+  var d = S.devices.filter(function(x){return x.id===id;})[0]; if(!d) return;
+  d.status = d.status==='active'?'inactive':'active';
+  saveState(); renderDeviceList();
+}
+function deleteDevice(id) {
+  if(!confirm('Hapus perangkat ini?')) return;
+  S.devices = S.devices.filter(function(x){return x.id!==id;});
+  saveState(); renderDeviceList();
+}
+function openEditProfile() {
+  var u = S.user; if(!u) return;
+  showModal('Edit Profil',
+    '<form id="form-profile">'
+    +'<div class="form-group"><label class="form-label">'+ico('user',13)+' Username</label>'
+    +'<input class="form-input" id="ep-user" value="'+esc(u.username)+'" required></div>'
+    +'<div class="form-group"><label class="form-label">'+ico('mail',13)+' Email</label>'
+    +'<input class="form-input" id="ep-email" type="email" value="'+esc(u.email)+'" required></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">'
+    +'<button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button>'
+    +'<button type="submit" class="btn btn-primary">'+ico('check',15)+' Simpan</button>'
+    +'</div></form>');
+  q('form-profile').addEventListener('submit', function(e){
+    e.preventDefault();
+    var nu = (qv('ep-user')||'').trim(), ne = (qv('ep-email')||'').trim();
+    if(!nu||!ne) return;
+    S.user.username=nu; S.user.email=ne;
+    saveState(); closeModal(); renderContent(); renderSidebar(); renderMobHeader();
+  });
+}
+function handleLogout() {
+  S.user = null;
+  localStorage.removeItem('bw_user');
+  localStorage.removeItem('bw_devices');
+  localStorage.removeItem('bw_logs');
+  localStorage.removeItem('bw_tokens');
+  S.devices = DEMO_DEVICES.map(function(x){return Object.assign({},x);});
+  S.logs    = DEMO_LOGS.map(function(x){return Object.assign({},x);});
+  S.tokens  = DEMO_TOKENS.map(function(x){return Object.assign({},x);});
+  S.page = 'landing';
+  render();
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+loadState();
+loginMode = true;
+render();
+</script>
+</body>
+</html>
