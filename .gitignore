@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 venv/
 __pycache__/
 *.pyc
-=======
 node_modules
->>>>>>> 51f3c7577bace7a5591c86eb15aecc0a2c6bc8d6
